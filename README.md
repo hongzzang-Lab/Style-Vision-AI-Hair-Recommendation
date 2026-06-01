@@ -1,7 +1,7 @@
 
 ---
 
-## 2. `Style-Vision-AI-Hair-Recommendation` README.md
+## Style-Vision-AI-Hair-Recommendation
 
 ```md
 # StyleVision: AI-Powered Hairstyle Recommendation
