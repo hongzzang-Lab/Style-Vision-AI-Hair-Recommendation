@@ -1,0 +1,219 @@
+import tensorflow as tf
+import numpy as np
+from tensorflow.keras.preprocessing import image
+import os
+import glob
+from tensorflow.keras.models import load_model
+from tensorflow.keras.applications.inception_v3 import preprocess_input
+from tensorflow.keras.preprocessing import image
+from tensorflow.keras.models import load_model
+from tensorflow.keras.applications.inception_v3 import preprocess_input
+from tensorflow import keras
+import cv2
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtGui import QImage, QPixmap
+
+class Ui_MainWindow(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(640, 480)
+
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+
+        self.original_pic = QtWidgets.QLabel(self.centralwidget)
+        self.original_pic.setGeometry(QtCore.QRect(30, 40, 231, 201))
+        self.original_pic.setObjectName("original_pic")
+
+        self.overlay_pic = QtWidgets.QLabel(self.centralwidget)
+        self.overlay_pic.setGeometry(QtCore.QRect(350, 30, 231, 211))
+        self.overlay_pic.setObjectName("overlay_pic")
+
+        self.take_pic = QtWidgets.QPushButton(self.centralwidget)
+        self.take_pic.setGeometry(QtCore.QRect(30, 260, 191, 51))
+        self.take_pic.setObjectName("take_pic")
+
+        self.face_shape = QtWidgets.QPushButton(self.centralwidget)
+        self.face_shape.setGeometry(QtCore.QRect(30, 330, 191, 101))
+        self.face_shape.setObjectName("face_shape")
+
+        self.man = QtWidgets.QPushButton(self.centralwidget)
+        self.man.setGeometry(QtCore.QRect(390, 260, 91, 23))
+        self.man.setObjectName("man")
+
+        self.women = QtWidgets.QPushButton(self.centralwidget)
+        self.women.setGeometry(QtCore.QRect(500, 260, 91, 23))
+        self.women.setObjectName("women")
+
+        self.recommend = QtWidgets.QPushButton(self.centralwidget)
+        self.recommend.setGeometry(QtCore.QRect(390, 290, 201, 91))
+        self.recommend.setObjectName("recommend")
+
+        self.re_recommend = QtWidgets.QPushButton(self.centralwidget)
+        self.re_recommend.setGeometry(QtCore.QRect(390, 390, 61, 41))
+        self.re_recommend.setObjectName("re_recommend")
+
+        self.save = QtWidgets.QPushButton(self.centralwidget)
+        self.save.setGeometry(QtCore.QRect(460, 390, 61, 41))
+        self.save.setObjectName("save")
+
+        self.outout = QtWidgets.QPushButton(self.centralwidget)
+        self.outout.setGeometry(QtCore.QRect(530, 390, 61, 41))
+        self.outout.setObjectName("outout")
+
+        self.face_shape_result = QtWidgets.QLabel(self.centralwidget)
+        self.face_shape_result.setGeometry(QtCore.QRect(240, 330, 101, 101))
+        self.face_shape_result.setObjectName("face_shape_result")
+
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 640, 22))
+        self.menubar.setObjectName("menubar")
+        MainWindow.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
+
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+#ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ객체 생성 ( 인스턴스 )ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ#
+
+        self.take_pic.clicked.connect(self.capture_pic)
+        self.face_shape.clicked.connect(self.face)
+      
+      
+
+#ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ#
+
+    def capture_pic(self):
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            print("카메라를 열 수 없습니다.")
+            return
+
+        print("사진을 찍으려면 'c' 키를 누르세요. 종료하려면 'q' 키를 누르세요")
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print("프레임을 읽을 수 없습니다.")
+                break
+
+            cv2.imshow('camera', frame)
+            key = cv2.waitKey(1)
+
+            if key == ord('c'):
+                # 사진 저장 경로 지정
+                save_path = 'F:\\BR\\face_picture.jpg'
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                cv2.imwrite(save_path, frame)
+                print(f"사진이 저장되었습니다: {save_path}")
+
+                # OpenCV BGR 이미지를 RGB로 변환 후 QLabel에 표시
+                image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                h, w, ch = image.shape
+                print(f"w : {w}, h : {h}")
+                bytes_per_line = ch * w
+                qimg = QImage(image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+                
+                pixmap = QPixmap.fromImage(qimg)
+                self.original_pic.setPixmap(pixmap)
+                self.original_pic.setScaledContents(True)  # 이미지가 QLabel 크기에 맞게 조정
+                
+                break
+            elif key == ord('q'):
+                print("종료합니다.")
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
+    
+    def face(self):
+        # 모델 로드
+        
+        model = load_model('weights/inceptionv3_model_weights')
+
+        # 모델 컴파일
+        model.compile(
+            optimizer='adam',
+            loss={'main_output': 'categorical_crossentropy', 'auxiliary_output': 'categorical_crossentropy'},
+            metrics={'main_output': 'accuracy', 'auxiliary_output': 'accuracy'}
+        )
+
+        class_names = ['Heart', 'Oblong', 'Oval', 'Round', 'Square']
+
+        # 훈련 시 사용한 전처리 함수
+        def preprocess_image(image):
+            if image.shape[-1] == 1:  # 그레이스케일 이미지 확인
+                image = tf.image.grayscale_to_rgb(image)  # 그레이스케일 -> RGB 변환
+            return image
+
+        def preprocess_and_predict(image_path):
+            # 새 이미지 불러오기 및 전처리
+            img = image.load_img(image_path, target_size=(299, 299))  # 모델에 맞는 크기로 조정
+            img_array = image.img_to_array(img)
+            img_array = preprocess_image(img_array)  # 훈련 시 사용한 전처리 함수 적용
+            img_array = preprocess_input(img_array)  # InceptionV3의 전처리 함수 사용
+            img_array = np.expand_dims(img_array, axis=0)  # 배치 차원 추가
+
+            # 예측 실행
+            predictions = model.predict(img_array)
+            print(predictions)
+            main_output = predictions[0]  # 주 출력(main_output) 사용 (리스트 형식일 때)
+
+            # 클래스 예측 및 확률 추출
+            predicted_class = np.argmax(main_output, axis=1)[0]
+            confidence = np.max(main_output, axis=1)[0] * 100  # 확률 백분율로 변환
+            class_label = class_names[predicted_class]
+            
+            return class_label, confidence
+
+        def load_latest_photo(directory):
+            files = glob.glob(os.path.join(directory, '*.jpg'))  # 또는 '*.png'로 변경 가능
+            if not files:
+                return None
+            latest_file = max(files, key=os.path.getctime)
+            return latest_file
+
+
+        latest_photo = load_latest_photo("F:\\BR")
+
+        if latest_photo:
+            # 예측 결과 출력
+            face_shape, confidence = preprocess_and_predict(latest_photo)
+            self.face_shape_result.setText(f"{face_shape} ({confidence:.2f}%)")
+        else:
+            print("No photos found in the directory.")
+
+ 
+       
+
+
+
+
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.original_pic.setText(_translate("MainWindow", "TextLabel"))
+        self.overlay_pic.setText(_translate("MainWindow", "TextLabel"))
+        self.take_pic.setText(_translate("MainWindow", "사진촬영"))
+        self.face_shape.setText(_translate("MainWindow", "얼굴형 분석"))
+        self.man.setText(_translate("MainWindow", "남자 "))
+        self.women.setText(_translate("MainWindow", "여자"))
+        self.recommend.setText(_translate("MainWindow", "헤어스타일 추천"))
+        self.re_recommend.setText(_translate("MainWindow", "재추천"))
+        self.save.setText(_translate("MainWindow", "저장"))
+        self.outout.setText(_translate("MainWindow", "닫기"))
+        self.face_shape_result.setText(_translate("MainWindow", "얼굴형"))
+
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    MainWindow = QtWidgets.QMainWindow()
+    ui = Ui_MainWindow()
+    ui.setupUi(MainWindow)
+    MainWindow.show()
+    sys.exit(app.exec_())
